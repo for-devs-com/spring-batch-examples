@@ -1,4 +1,4 @@
-package com.fordevs.app;
+package com.fordevs;
 
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.boot.SpringApplication;
@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableBatchProcessing
-@ComponentScan({"com.fordevs.config", "com.fordevs.listener", "com.fordevs.processor"})
+@ComponentScan({"com.fordevs.config", "com.fordevs.processor"})
 public class SpringBatchApplication {
 
 	public static void main(String[] args) {
