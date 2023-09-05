@@ -8,25 +8,33 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.database.JpaCursorItemReader;
 import org.springframework.batch.item.database.JpaItemWriter;
-import org.springframework.batch.item.kafka.KafkaItemReader;
 import org.springframework.batch.item.kafka.KafkaItemWriter;
+import org.springframework.batch.item.kafka.builder.KafkaItemReaderBuilder;
+import org.springframework.batch.item.kafka.builder.KafkaItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.orm.jpa.JpaTransactionManager;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
+import java.util.Properties;
 
 @Configuration
 public class SampleJob {
+    @Autowired
+    private ProducerService producerService;
 
-    private  KafkaTemplate<String, OutputStudent> studentKafkaTemplate ;
+    @Autowired
+    private KafkaTemplate<Long, InputStudent> kafkaTemplate;
+
+
 
     @Autowired
     private JobBuilderFactory jobBuilderFactory;
@@ -62,19 +70,44 @@ public class SampleJob {
     @Autowired
     private JpaTransactionManager jpaTransactionManager;
 
+    @Autowired
+    private KafkaProperties properties;
     @Bean
-    public Job chunkJob() {
-        return jobBuilderFactory.get(	"First Chunk Job")
-                .incrementer(new RunIdIncrementer())
-                .start(chunkStep())
+    ItemReader<? extends InputStudent> kafkaItemReader() {
+        Properties props = new Properties();
+        props.putAll(this.properties.buildConsumerProperties());
+        return new KafkaItemReaderBuilder<Long, InputStudent>()
+                .partitions(0).consumerProperties(props)
+                .name("student_reader").saveState(true)
+                .topic("student_topic").build();
+    }
+
+    @Bean
+    KafkaItemWriter<Long, InputStudent> kafkaItemWriter() {
+        return new KafkaItemWriterBuilder<Long, InputStudent>()
+                .kafkaTemplate(kafkaTemplate)
+                .itemKeyMapper(InputStudent::getId)
                 .build();
     }
-    private Step chunkStep() {
+
+    @Bean
+    public Job chunkJob() {
+        try {
+            return jobBuilderFactory.get("First Chunk Job")
+                    .incrementer(new RunIdIncrementer())
+                    .start(chunkStep())
+                    .build();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private Step chunkStep() throws Exception {
         return stepBuilderFactory.get("First Chunk Step")
-                .<InputStudent, OutputStudent>chunk(100)
-                .reader(jpaCursorItemReader())
-                .processor(itemProcessor)
-                .writer(jpaItemWriter())
+                .<InputStudent, InputStudent>chunk(100)
+                .reader(kafkaItemReader())
+                .reader(jpaCursorPgsqlItemReader())
+                //.processor(itemProcessor)
+                .writer(kafkaItemWriter())
                 //.faultTolerant()
                 //.skip(Throwable.class)
                 //.skip(NullPointerException.class)
@@ -85,13 +118,19 @@ public class SampleJob {
                 .build();
     }
 
-    public JpaCursorItemReader<InputStudent> jpaCursorItemReader() {
+    public JpaCursorItemReader<InputStudent> jpaCursorPgsqlItemReader() {
+
         JpaCursorItemReader<InputStudent> jpaCursorItemReader =
                 new JpaCursorItemReader<InputStudent>();
 
         jpaCursorItemReader.setEntityManagerFactory(postgresqlEntityManagerFactory);
 
         jpaCursorItemReader.setQueryString("From InputStudent");
+
+        /*String kafkaTopic = "student_topic";
+        String message = String.valueOf(jpaCursorItemReader);
+
+        producerService.sendMessage(kafkaTopic, message);*/
 
         return jpaCursorItemReader;
     }

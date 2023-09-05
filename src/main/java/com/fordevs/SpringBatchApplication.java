@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableBatchProcessing
-@ComponentScan({"com.fordevs.config", "com.fordevs.processor"})
+@ComponentScan({"com.fordevs.config", "com.fordevs.processor", "com.fordevs.mysql", "com.fordevs.postgresql"})
 public class SpringBatchApplication {
 
 	public static void main(String[] args) {

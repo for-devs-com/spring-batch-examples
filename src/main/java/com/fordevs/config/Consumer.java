@@ -1,15 +1,13 @@
 package com.fordevs.config;
 
-import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
-import com.fordevs.mysql.entity.OutputStudent;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.springframework.kafka.annotation.KafkaListener;
 
 import java.util.Collections;
 import java.util.Properties;
 
 public class Consumer {
+    static ProducerService producerService;
     public Consumer(Properties props) {
 
     }
@@ -23,7 +21,7 @@ public class Consumer {
         Properties props = new Properties();
 
 
-        Consumer consumer = new Consumer(props);
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(props);
         consumer.subscribe(Collections.singleton("my-topic"));
 
         while (true) {

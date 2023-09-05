@@ -1,16 +1,8 @@
 package com.fordevs.config;
 
-import com.fordevs.mysql.entity.OutputStudent;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
-
-import java.util.Properties;
-
 public class Producer {
 
-    private static KafkaProducerService kafkaProducerService;
+    private static ProducerService producerService;
     /*private KafkaTemplate<String, OutputStudent> kafkaTemplate;
 
         public void sendStudentData(OutputStudent student) {
@@ -18,16 +10,14 @@ public class Producer {
         }
     */
     /*@Autowired
-    KafkaProducerService kafkaProducerService;*/
+    ProducerService kafkaProducerService;*/
 
     public static void main(String[] args) {
-        Properties props = new Properties();
-
 
         String message = "Hello, Testing Kafka!";
-        ProducerRecord record = new ProducerRecord<>("my-topic", message);
+        String topic = "my-first-topic";
 
-        kafkaProducerService.sendMessage(String.valueOf(record));
-        /*kafkaProducerService.close();*/
+        producerService.sendMessage(topic, message);
     }
+
 }
