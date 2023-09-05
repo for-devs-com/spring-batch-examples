@@ -8,18 +8,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.util.List;
 import java.util.Properties;
 
 
 /*@Service*/
-@Component
+@Service
 public class ProducerService {
 
-    KafkaConfig kafkaConfig = new KafkaConfig();
+    @Autowired
+    private KafkaConfig kafkaConfig;
 
 
-    KafkaProducer<String, String> producer = new KafkaProducer<>(kafkaConfig.producerConfigs().getConfigurationProperties());
+    KafkaProducer<String, String> producer;
+
+    @PostConstruct
+    public void init() {
+        producer = new KafkaProducer<>(kafkaConfig.producerConfigs().getConfigurationProperties());
+    }
 
     /*@Autowired
     public ProducerService(KafkaTemplate<InputStudent, String> kafkaTemplate) {
@@ -30,6 +38,9 @@ public class ProducerService {
 
     public void sendMessage(String topic, String message) {
         producer.send(new ProducerRecord<>(topic, message));
+    }
+    @PreDestroy
+    public void close() {
         producer.close();
     }
 }

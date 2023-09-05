@@ -1,19 +1,20 @@
 package com.fordevs.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fordevs.mysql.entity.OutputStudent;
 import com.fordevs.postgresql.entity.InputStudent;
 import com.fordevs.processor.ItemProcessor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaCursorItemReader;
 import org.springframework.batch.item.database.JpaItemWriter;
-import org.springframework.batch.item.kafka.KafkaItemWriter;
 import org.springframework.batch.item.kafka.builder.KafkaItemReaderBuilder;
-import org.springframework.batch.item.kafka.builder.KafkaItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -24,16 +25,12 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
+import java.util.List;
 import java.util.Properties;
 
 @Configuration
+@Slf4j
 public class SampleJob {
-    @Autowired
-    private ProducerService producerService;
-
-    @Autowired
-    private KafkaTemplate<Long, InputStudent> kafkaTemplate;
-
 
 
     @Autowired
@@ -82,12 +79,30 @@ public class SampleJob {
                 .topic("student_topic").build();
     }
 
-    @Bean
+    /*@Bean
     KafkaItemWriter<Long, InputStudent> kafkaItemWriter() {
         return new KafkaItemWriterBuilder<Long, InputStudent>()
                 .kafkaTemplate(kafkaTemplate)
                 .itemKeyMapper(InputStudent::getId)
                 .build();
+    }*/
+
+    @Bean
+    public ItemWriter<InputStudent> kafkaItemWriter() {
+        return new ItemWriter<InputStudent>() {
+            @Autowired
+            private ProducerService producerService;
+
+            private final ObjectMapper objectMapper = new ObjectMapper();
+
+            @Override
+            public void write(List<? extends InputStudent> items) throws Exception {
+                for (InputStudent item : items) {
+                    String valueAsString = objectMapper.writeValueAsString(item);
+                    producerService.sendMessage("student_topic", valueAsString);
+                }
+            }
+        };
     }
 
     @Bean
@@ -104,7 +119,6 @@ public class SampleJob {
     private Step chunkStep() throws Exception {
         return stepBuilderFactory.get("First Chunk Step")
                 .<InputStudent, InputStudent>chunk(100)
-                .reader(kafkaItemReader())
                 .reader(jpaCursorPgsqlItemReader())
                 //.processor(itemProcessor)
                 .writer(kafkaItemWriter())
@@ -119,18 +133,12 @@ public class SampleJob {
     }
 
     public JpaCursorItemReader<InputStudent> jpaCursorPgsqlItemReader() {
-
+        log.info("Initializing JPA Cursor Item Reader");
         JpaCursorItemReader<InputStudent> jpaCursorItemReader =
                 new JpaCursorItemReader<InputStudent>();
 
         jpaCursorItemReader.setEntityManagerFactory(postgresqlEntityManagerFactory);
-
         jpaCursorItemReader.setQueryString("From InputStudent");
-
-        /*String kafkaTopic = "student_topic";
-        String message = String.valueOf(jpaCursorItemReader);
-
-        producerService.sendMessage(kafkaTopic, message);*/
 
         return jpaCursorItemReader;
     }
