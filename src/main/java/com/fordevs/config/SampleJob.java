@@ -1,9 +1,7 @@
 package com.fordevs.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fordevs.mysql.entity.OutputStudent;
 import com.fordevs.postgresql.entity.InputStudent;
-import com.fordevs.processor.ItemProcessor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -13,21 +11,24 @@ import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaCursorItemReader;
-import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.kafka.builder.KafkaItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.orm.jpa.JpaTransactionManager;
 
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Configuración de un de Spring Batch Job que útiliza Kafka y JPA.
+ *
+ * @author Enoc.Velza | for-devs.com
+ * @version 1.0
+ */
 @Configuration
 @Slf4j
 public class SampleJob {
@@ -39,18 +40,9 @@ public class SampleJob {
     @Autowired
     private StepBuilderFactory stepBuilderFactory;
 
-
-    @Autowired
-    private ItemProcessor itemProcessor;
-
-
-    @Autowired
+   /* @Autowired
     @Qualifier("datasource")
-    private DataSource datasource;
-
-    @Autowired
-    @Qualifier("universitydatasource")
-    private DataSource universitydatasource;
+    private DataSource datasource;*/
 
     @Autowired
     @Qualifier("postgresdatasource")
@@ -61,14 +53,13 @@ public class SampleJob {
     private EntityManagerFactory postgresqlEntityManagerFactory;
 
     @Autowired
-    @Qualifier("mysqlEntityManagerFactory")
-    private EntityManagerFactory mysqlEntityManagerFactory;
-
-    @Autowired
-    private JpaTransactionManager jpaTransactionManager;
-
-    @Autowired
     private KafkaProperties properties;
+
+    /**
+     * Configura el lector de elementos de Kafka.
+     *
+     * @return ItemReader para Kafka.
+     */
     @Bean
     ItemReader<? extends InputStudent> kafkaItemReader() {
         Properties props = new Properties();
@@ -79,14 +70,11 @@ public class SampleJob {
                 .topic("student_topic").build();
     }
 
-    /*@Bean
-    KafkaItemWriter<Long, InputStudent> kafkaItemWriter() {
-        return new KafkaItemWriterBuilder<Long, InputStudent>()
-                .kafkaTemplate(kafkaTemplate)
-                .itemKeyMapper(InputStudent::getId)
-                .build();
-    }*/
-
+    /**
+     * Configura el escritor de elementos de Kafka.
+     *
+     * @return ItemWriter para Kafka.
+     */
     @Bean
     public ItemWriter<InputStudent> kafkaItemWriter() {
         return new ItemWriter<InputStudent>() {
@@ -105,6 +93,11 @@ public class SampleJob {
         };
     }
 
+    /**
+     * Configura el Job de Spring Batch.
+     *
+     * @return Job de Spring Batch.
+     */
     @Bean
     public Job chunkJob() {
         try {
@@ -116,26 +109,27 @@ public class SampleJob {
             throw new RuntimeException(e);
         }
     }
-    private Step chunkStep() throws Exception {
+    /**
+     * Configura el Step de Spring Batch.
+     *
+     * @return Step de Spring Batch.
+     */
+    private Step chunkStep() {
         return stepBuilderFactory.get("First Chunk Step")
-                .<InputStudent, InputStudent>chunk(100)
+                .<InputStudent, InputStudent>chunk(1000)
                 .reader(jpaCursorPgsqlItemReader())
-                //.processor(itemProcessor)
                 .writer(kafkaItemWriter())
-                //.faultTolerant()
-                //.skip(Throwable.class)
-                //.skip(NullPointerException.class)
-                //.skipLimit(100)
-                //.retryLimit(3)
-                //.retry(Throwable.class)
-                .transactionManager(jpaTransactionManager)
                 .build();
     }
-
+    /**
+     * Configura el lector de elementos de JPA para PostgreSQL.
+     *
+     * @return jpaCursorItemReader para JPA configurado.
+     */
     public JpaCursorItemReader<InputStudent> jpaCursorPgsqlItemReader() {
         log.info("Initializing JPA Cursor Item Reader");
         JpaCursorItemReader<InputStudent> jpaCursorItemReader =
-                new JpaCursorItemReader<InputStudent>();
+                new JpaCursorItemReader<>();
 
         jpaCursorItemReader.setEntityManagerFactory(postgresqlEntityManagerFactory);
         jpaCursorItemReader.setQueryString("From InputStudent");
@@ -143,47 +137,4 @@ public class SampleJob {
         return jpaCursorItemReader;
     }
 
-    public JpaItemWriter<OutputStudent> jpaItemWriter() {
-        JpaItemWriter<OutputStudent> jpaItemWriter =
-                new JpaItemWriter<OutputStudent>();
-
-        jpaItemWriter.setEntityManagerFactory(mysqlEntityManagerFactory);
-
-        return jpaItemWriter;
-    }
-
-    /*public KafkaItemWriter<String, OutputStudent> studentInfokafkaItemWriter() {
-        KafkaItemWriter<String, OutputStudent> kafkaItemWriter = new KafkaItemWriter<>();
-        kafkaItemWriter.setKafkaTemplate(studentKafkaTemplate);
-        kafkaItemWriter.setItemKeyMapper(studentInfo -> String.valueOf(studentInfo.getId()));
-        kafkaItemWriter.setDelete(Boolean.FALSE);
-        try {
-            kafkaItemWriter.afterPropertiesSet();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-
-        return kafkaItemWriter;
-    }
-
-    public KafkaItemReader kafkaItemReader() {
-        KafkaItemReader kafkaItemReader = new KafkaItemReader();
-        kafkaItemReader.setConsumerGroupId("student_group");
-        kafkaItemReader.setTopic("student_topic");
-        kafkaItemReader.setConsumerProperties(null);
-        kafkaItemReader.setKeyMapper(new Converter() {
-            @Override
-            public Object convert(Object o) {
-                return null;
-            }
-        });
-        kafkaItemReader.setValueMapper(new Converter() {
-            @Override
-            public Object convert(Object o) {
-                return null;
-            }
-        });
-        return kafkaItemReader;
-    }*/
 }

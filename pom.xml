@@ -38,34 +38,26 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-		
-		<!-- <dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency> -->
-		
-		<!-- these 2 only required if java version > 8 -->
-		<!-- <dependency>
-			<groupId>jakarta.xml.bind</groupId>
-			<artifactId>jakarta.xml.bind-api</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.glassfish.jaxb</groupId>
-			<artifactId>jaxb-runtime</artifactId>
-		</dependency> -->
 
-		<dependency>
+		<!--<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>
 			<version>8.0.33</version>
 			<scope>runtime</scope>
-		</dependency>
+		</dependency>-->
 		
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>42.5.4</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
 
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
@@ -79,14 +71,11 @@
 			<scope>test</scope>
 		</dependency>
 
-
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-clients</artifactId>
 			<version>${kafka.version}</version>
 		</dependency>
-
-
 
 		<dependency>
 			<groupId>org.springframework.batch</groupId>
